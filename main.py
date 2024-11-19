@@ -8,14 +8,11 @@ from rest.routes.car_router  import router as car_router
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-description = """
-My first FastAPI project. This is a simple project to demonstrate the use of FastAPI.
-"""
 logger.info("Starting application")
 
 app = FastAPI(
-    title = "My REST API",
-    description = description,
+    title = "My REST API application",
+    description = "Basic REST project to demonstrate the use of FastAPI.",
     version = "0.0.1"
 )
 

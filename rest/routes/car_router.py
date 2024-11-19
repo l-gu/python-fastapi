@@ -1,8 +1,10 @@
 import logging
 from typing import List, Optional
-from fastapi import APIRouter, Request, Response, Header, Query
-
-from rest.dto.car_dto import Car
+from fastapi import APIRouter, Request, Response, Header, Query, Depends
+from domain.services.car_service import CarService, get_car_service
+from domain.model.car import Car
+# from dependency_injection import get_car_service
+from rest.dto.car_dto import CarDto
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +22,9 @@ router = APIRouter()
         # tags: Organizes the routes in Swagger UI under specific headings. Useful for grouping routes logically 
         tags=["cars"],
         responses={200: {"description": "OK."},})
-async def get_all(
+async def get(
+    # Service dependency injection
+    car_service: CarService = Depends(get_car_service),
     # Path parameters
     # (none)
     # Header parameters ("...": required, "None": optional)
@@ -28,25 +32,19 @@ async def get_all(
     # Query parameters for filtering the cars ("...": required, "None": optional)
     min_price: float = Query(None, title="Minimum Price", description="Filter with a price greater than or equal to this value", example=10.0),
     max_price: float = Query(None, title="Maximum Price", description="Filter with a price less than or equal to this value", example=100.0),
-    ) -> List[Car]:
-
-    logger.info("Get all cars")
+    ) -> List[CarDto]:
 
     # Query parameters for filtering the cars
-    logger.info("Query parameters: min_price=%s, max_price=%s", min_price, max_price)
+    logger.info("GET cars. Query parameters: min_price=%s, max_price=%s", min_price, max_price)
 
-    # Result : list of cars
-    list = []
-    for i in range(20):
-        id = i+1
-        car = Car(id=id, name="Car"+str(id), price=id*1000.0)
-        # filtering with price
-        if ( filterOK(car, min_price, max_price) ):
-            list.append(car)
+    list = car_service.get_cars(min_price, max_price)
+    # domain to dto conversion
+    result = []
+    for car in list:
+        result.append(CarDto(id=car.id, name=car.name, price=car.price))
+    return result
 
-    return list
-
-def filterOK(car: Car, min_price: Optional[float]=None, max_price: Optional[float]=None) -> bool:
+def filterOK(car: CarDto, min_price: Optional[float]=None, max_price: Optional[float]=None) -> bool:
     if min_price is not None:
         if car.price < min_price:
             return False
@@ -68,14 +66,17 @@ def filterOK(car: Car, min_price: Optional[float]=None, max_price: Optional[floa
 async def get_by_id(
     # Path parameters
     id: int,
+    # Service dependency injection
+    car_service: CarService = Depends(get_car_service),
     # Header parameters ("...": required, "None": optional)
     brand: str = Header(None, description="Brand of the car (in header)", min_length=1, max_length=20, example="Peugeot"),
-    ) -> Car:
+    ) -> CarDto:
     logger.info("Get car by id: %d", id)
     # Get car by id
-    if id > 100:
+    car = car_service.get_car_by_id(id)
+    if (car is None):
         # If car is not found, return 404 status
         return Response(status_code=404)
     else:
-        # If car is found, return the car   
-        return Car(id=id, name="Car"+str(id), price=10000.0)
+        # If car is found, return the car payload
+        return CarDto(id=car.id, name=car.name, price=car.price)
